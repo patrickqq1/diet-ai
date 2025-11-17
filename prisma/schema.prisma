@@ -1,0 +1,375 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  password       String?
+  name           String
+  role           USER_ROLE     @default(USER)
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+  UserProfile    UserProfile?
+  Subscription   Subscription?
+  Workout        Workout[]
+  Meal           Meal[]
+  CalorieLog     CalorieLog[]
+  SentInvites    Invite[]      @relation("SentInvites")
+  ReceivedInvite Invite?       @relation("ReceivedInvite")
+  emailVerified  Boolean       @default(false)
+  image          String?       @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
+  sessions       Session[]
+  accounts       Account[]
+
+  @@map("user")
+}
+
+enum USER_ROLE {
+  ADMIN
+  USER
+}
+
+model UserProfile {
+  id     String  @id @default(cuid())
+  userId String  @unique
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weight Float?
+  height Float?
+  age    Int?
+  gender Gender?
+
+  goalWeight       Float?
+  dailyCalorieGoal Int    @default(2000)
+  weeklyWorkouts   Int    @default(3)
+
+  // Running-specific preferences
+  runningExperience     RunningExperience? @default(BEGINNER)
+  preferredDistanceUnit DistanceUnit       @default(KILOMETERS)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("user_profiles")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum RunningExperience {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  ELITE
+}
+
+enum DistanceUnit {
+  KILOMETERS
+  MILES
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  plan   SubscriptionPlan   @default(FREE)
+  status SubscriptionStatus @default(ACTIVE)
+
+  startDate DateTime  @default(now())
+  endDate   DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([userId])
+  @@map("subscriptions")
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+model Workout {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?
+  duration    Int
+  date        DateTime    @default(now())
+  completed   Boolean     @default(false)
+  type        WorkoutType @default(STRENGTH)
+
+  exercises Exercise[]
+  runs      Run[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@map("workouts")
+}
+
+enum WorkoutType {
+  STRENGTH
+  CARDIO
+  RUNNING
+  MIXED
+}
+
+model Exercise {
+  id        String  @id @default(cuid())
+  workoutId String
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  name      String
+  sets      Int
+  reps      Int
+  weight    Float?
+  duration  Int?
+  notes     String?
+  completed Boolean
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([workoutId])
+  @@map("exercises")
+}
+
+model Run {
+  id        String  @id @default(cuid())
+  workoutId String
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  // Distance and pace
+  distance     Float
+  distanceUnit DistanceUnit @default(KILOMETERS)
+  duration     Int // in minutes
+  pace         Float? // calculated field: duration / distance
+
+  // Running metrics
+  averageSpeed   Float?
+  maxSpeed       Float?
+  elevationGain  Float?
+  caloriesBurned Int?
+
+  // Route and conditions
+  routeName   String?
+  terrainType TerrainType?
+  weather     String?
+  temperature Float?
+
+  // Heart rate data
+  averageHeartRate Int?
+  maxHeartRate     Int?
+
+  // Personal notes
+  notes       String?
+  effortLevel EffortLevel?
+  completed   Boolean      @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([workoutId])
+  @@map("runs")
+}
+
+enum TerrainType {
+  ROAD
+  TRAIL
+  TRACK
+  TREADMILL
+  BEACH
+  MOUNTAIN
+}
+
+enum EffortLevel {
+  EASY
+  MODERATE
+  HARD
+  MAX_EFFORT
+}
+
+model Meal {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name String
+  type MealType
+  date DateTime @default(now())
+
+  foods Food[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([userId])
+  @@index([date])
+  @@map("meals")
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+model Food {
+  id     String @id @default(cuid())
+  mealId String
+  meal   Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+
+  name     String
+  quantity Float
+
+  calories Int
+  protein  Float
+  carbs    Float
+  fat      Float
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([mealId])
+  @@map("foods")
+}
+
+model CalorieLog {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  date DateTime @default(now())
+
+  // Daily totals
+  totalCalories Int   @default(0)
+  totalProtein  Float @default(0)
+  totalCarbs    Float @default(0)
+  totalFat      Float @default(0)
+
+  // Goals
+  calorieGoal Int @default(2000)
+
+  // Exercise
+  caloriesBurned Int @default(0)
+
+  // Running-specific totals
+  runningCaloriesBurned Int          @default(0)
+  totalDistance         Float        @default(0)
+  distanceUnit          DistanceUnit @default(KILOMETERS)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, date])
+  @@index([userId])
+  @@index([date])
+  @@map("calorie_logs")
+}
+
+model Invite {
+  id       String @id @default(cuid())
+  senderId String
+  sender   User   @relation("SentInvites", fields: [senderId], references: [id], onDelete: Cascade)
+
+  email  String
+  token  String       @unique
+  status InviteStatus @default(PENDING)
+
+  acceptedBy   String?   @unique
+  acceptedUser User?     @relation("ReceivedInvite", fields: [acceptedBy], references: [id])
+  acceptedAt   DateTime?
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([email])
+  @@index([token])
+  @@map("invites")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?  @db.Text
+  userAgent String?  @db.Text
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String    @db.Text
+  providerId            String    @db.Text
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  idToken               String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?   @db.Text
+  password              String?   @db.Text
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String   @db.Text
+  value      String   @db.Text
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@map("verification")
+}
