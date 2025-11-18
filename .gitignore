@@ -7,6 +7,7 @@
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
+.idx
 !.yarn/releases
 !.yarn/versions
 

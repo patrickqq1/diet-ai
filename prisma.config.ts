@@ -10,6 +10,6 @@ export default defineConfig({
   datasource: {
     url:
       process.env.DATABASE_URL ||
-      "mysql://patrick:enderson007@localhost:3306/mydb",
+      "mysql://root:@localhost:3306/mydb",
   },
 });

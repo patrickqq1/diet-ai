@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label"; // ensure signIn.google exists
+import { authClient, signIn, signUp } from "@/lib/auth-client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Chrome, Dumbbell, Loader2, UserPlus } from "lucide-react";
 import Link from "next/link";
@@ -70,7 +71,7 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
-      const response = await signUp.email({
+      const response = await authClient.signUp.email({
         name: data.name,
         email: data.email,
         password: data.password,
@@ -91,7 +92,7 @@ export default function RegisterPage() {
 
   const handleGoogleSignUp = async () => {
     try {
-      const response = await signIn.social({
+      const response = await authClient.signIn.social({
         provider: "google",
         callbackURL: "/dashboard",
         errorCallbackURL: "/login/error",
